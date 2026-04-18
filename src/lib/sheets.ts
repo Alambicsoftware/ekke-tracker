@@ -516,8 +516,8 @@ async function ensureElectronTab(spreadsheetId: string): Promise<void> {
         requests: [{ addSheet: { properties: { title: ELECTRON_TAB } } }],
       },
     });
-    await setRange(spreadsheetId, `${ELECTRON_TAB}!A1:D1`, [
-      ['tracking_id', 'opened_at', 'clicked_at', 'clicked_url'],
+    await setRange(spreadsheetId, `${ELECTRON_TAB}!A1:E1`, [
+      ['tracking_id', 'opened_at', 'clicked_at', 'clicked_url', 'unsubscribed_at'],
     ]);
   }
 }
@@ -564,20 +564,41 @@ export async function recordElectronClick(trackingId: string, url: string): Prom
   }
 }
 
+export async function recordElectronUnsubscribe(trackingId: string): Promise<void> {
+  const spreadsheetId = process.env.TRACKER_SHEET_ID!;
+  await ensureElectronTab(spreadsheetId);
+  const rows = await getRange(spreadsheetId, `${ELECTRON_TAB}!A:E`);
+  const idx = rows.slice(1).findIndex((r) => r[0] === trackingId);
+  if (idx >= 0) {
+    if (!rows[idx + 1][4]) {
+      await setRange(
+        spreadsheetId,
+        `${ELECTRON_TAB}!E${idx + 2}`,
+        [[new Date().toISOString()]]
+      );
+    }
+  } else {
+    await appendRange(spreadsheetId, `${ELECTRON_TAB}!A:E`, [
+      [trackingId, '', '', '', new Date().toISOString()],
+    ]);
+  }
+}
+
 export async function getElectronEvents(
   trackingIds: string[]
-): Promise<Record<string, { opened_at: string; clicked_at: string; clicked_url: string }>> {
+): Promise<Record<string, { opened_at: string; clicked_at: string; clicked_url: string; unsubscribed_at: string }>> {
   const spreadsheetId = process.env.TRACKER_SHEET_ID!;
-  const rows = await getRange(spreadsheetId, `${ELECTRON_TAB}!A:D`).catch(
+  const rows = await getRange(spreadsheetId, `${ELECTRON_TAB}!A:E`).catch(
     () => [] as string[][]
   );
-  const result: Record<string, { opened_at: string; clicked_at: string; clicked_url: string }> = {};
+  const result: Record<string, { opened_at: string; clicked_at: string; clicked_url: string; unsubscribed_at: string }> = {};
   for (const row of rows.slice(1)) {
     if (row[0] && trackingIds.includes(row[0])) {
       result[row[0]] = {
-        opened_at: row[1] || '',
-        clicked_at: row[2] || '',
-        clicked_url: row[3] || '',
+        opened_at:       row[1] || '',
+        clicked_at:      row[2] || '',
+        clicked_url:     row[3] || '',
+        unsubscribed_at: row[4] || '',
       };
     }
   }
