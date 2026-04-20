@@ -594,11 +594,12 @@ export async function getElectronEvents(
   const result: Record<string, { opened_at: string; clicked_at: string; clicked_url: string; unsubscribed_at: string }> = {};
   for (const row of rows.slice(1)) {
     if (row[0] && trackingIds.includes(row[0])) {
+      const prev = result[row[0]];
       result[row[0]] = {
-        opened_at:       row[1] || '',
-        clicked_at:      row[2] || '',
-        clicked_url:     row[3] || '',
-        unsubscribed_at: row[4] || '',
+        opened_at:       prev?.opened_at       || row[1] || '',
+        clicked_at:      prev?.clicked_at      || row[2] || '',
+        clicked_url:     prev?.clicked_url     || row[3] || '',
+        unsubscribed_at: prev?.unsubscribed_at || row[4] || '',
       };
     }
   }
